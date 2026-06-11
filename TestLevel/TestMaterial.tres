@@ -1,0 +1,11 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://duyacnlhqq0hf"]
+
+[ext_resource type="Texture2D" uid="uid://d3n257tp3yyen" path="res://TestLevel/TestLevel_tile.png" id="1_b7lbt"]
+
+[resource]
+vertex_color_use_as_albedo = true
+vertex_color_is_srgb = true
+albedo_texture = ExtResource("1_b7lbt")
+emission_texture = ExtResource("1_b7lbt")
+texture_filter = 0
+stencil_flags = 2
