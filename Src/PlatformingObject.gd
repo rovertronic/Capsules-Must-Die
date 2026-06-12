@@ -4,6 +4,7 @@ extends Node3D
 # Higher iterations = More precise collision at higher speeds, but uses more performance
 @export var Iterations : int = 4
 @export var Radius : float = .5
+@export var DebugGroundingDot : Node3D
 
 var FLOOR_SNAP_THRESHOLD = 0.2 #Set this to your project's maximum stair height
 
@@ -71,6 +72,9 @@ func handle_floor_collision(iteration : int) -> void:
 				position = (platforms[0].transform * delta_transform * player_relative).origin
 
 			OnFloor = true
+			
+			if DebugGroundingDot:
+				DebugGroundingDot.global_position = closest_sample
 	else:
 		OnFloor = false
 	
@@ -79,39 +83,23 @@ func handle_floor_collision(iteration : int) -> void:
 func handle_wall_collision() -> void:
 	var space_state = get_world_3d().get_direct_space_state()
 	
-	for i in range(20):
-		var shape = PhysicsServer3D.cylinder_shape_create()
-		PhysicsServer3D.shape_set_data(shape, {"radius" : Radius, "height" : 1.0})
-		
-		var query = PhysicsShapeQueryParameters3D.new()
-		query.shape_rid = shape
-		query.transform = Transform3D(
-			Basis.IDENTITY,
-			position + Vector3(0.0,1.0,0.0)
-		)
-		
-		var points : Array[Vector3] = space_state.collide_shape(query)
-		
-		if points.size() == 0:
-			#Already outside wall, early exit
-			return
-		
-		for point in points:
-			var rayQuery = PhysicsRayQueryParameters3D.new()
-			rayQuery.from = Vector3(position.x,point.y,position.z)
-			rayQuery.to = Vector3(point.x,point.y,point.z)
-			
-			var result = space_state.intersect_ray(rayQuery)
-			if result:
-				var hit_pos : Vector3 = result["position"]
-				var hit_normal : Vector3 = result["normal"]
-				if abs(hit_normal.y) < .1:
-					var push = hit_pos.distance_to(point) + .001
-					position.x += hit_normal.x * push
-					position.z += hit_normal.z * push
-					break
-		
-		PhysicsServer3D.free_rid(shape)
+	var shape = PhysicsServer3D.cylinder_shape_create()
+	PhysicsServer3D.shape_set_data(shape, {"radius" : Radius, "height" : 1.0})
+	
+	var query = PhysicsShapeQueryParameters3D.new()
+	query.shape_rid = shape
+	query.transform = Transform3D(
+		Basis.IDENTITY,
+		position + Vector3(0.0,1.5,0.0)
+	)
+	
+	var rest_info = space_state.get_rest_info(query)
+	
+	if rest_info:
+		var push = Radius - (position * Vector3(1,0,1)).distance_to(rest_info["point"] * Vector3(1,0,1))
+		position += rest_info["normal"] * Vector3(1,0,1) * push
+	
+	PhysicsServer3D.free_rid(shape)
 
 func _physics_process(delta: float) -> void:	
 	Velocity.y -= .005
@@ -119,7 +107,6 @@ func _physics_process(delta: float) -> void:
 	for i in range(Iterations):
 		position += Velocity * StepDelta
 		handle_floor_collision(i)
-	# If the code based wall collision isn't to your taste, you can sub it out for a characterbody3D hitbox.
-	handle_wall_collision()
+		handle_wall_collision()
 	
 	pass
